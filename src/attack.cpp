@@ -1,6 +1,7 @@
 // attack.cpp
 
 #include "defs.h"
+#include "stdlib.h"
 
 const int knightDirection[8] = { -8, -19, -21, -12, 8, 19, 21, 12};
 const int rookDirection[4] = { -1, -10, 1, 10 };
@@ -8,7 +9,12 @@ const int bishopDirection[4] = { -9, -11, 11, 9 };
 const int kingDirection[8] = { -1, -10, 1, 10, -9, -11, 11, 9};
 
 int sqAttacked(const int sq, const int side, const S_BOARD *pos) {
+    // note: "side" is the attacking side
     int piece,index,tempSq,dir;
+
+    ASSERT(sqOnBoard(sq));
+    ASSERT(sideValid(side));
+    ASSERT(checkBoard(pos));
 
     // pawns
     if(side == WHITE) {
@@ -24,7 +30,7 @@ int sqAttacked(const int sq, const int side, const S_BOARD *pos) {
     // knights
     for(index = 0; index < 8; ++index) {
         piece = pos->pieces[sq + knightDirection[index]];
-        if(IsKn(piece) && PieceCol[piece]==side) {
+        if(piece != OFFBOARD && IsKn(piece) && PieceCol[piece]==side) {
             return TRUE;
         }
     }
@@ -46,7 +52,7 @@ int sqAttacked(const int sq, const int side, const S_BOARD *pos) {
         }
     }
 
-    // rooks, queens
+    // bishop, queens
     for(index = 0; index < 4; ++index) {
         dir = bishopDirection[index];
         tempSq = sq + dir;
@@ -63,13 +69,14 @@ int sqAttacked(const int sq, const int side, const S_BOARD *pos) {
         }
     }
 
-    // knights
+    // kings
     for(index = 0; index < 8; ++index) {
         piece = pos->pieces[sq + kingDirection[index]];
-        if(IsKi(piece) && PieceCol[piece]==side) {
+        if(piece != OFFBOARD && IsKi(piece) && PieceCol[piece]==side) {
+            //printf("king in check\n");
             return TRUE;
         }
     }
-
+    //printf("king not attacked\n");
     return FALSE;
 }

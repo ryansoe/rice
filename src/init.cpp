@@ -1,6 +1,7 @@
-#include<iostream>
+// init.cpp
+
 #include "defs.h"
-#include <stdio.h>
+#include "stdlib.h"
 using namespace std;
 
 #define RAND_64 (   (U64)rand() | \
@@ -22,12 +23,89 @@ U64 castleKeys[16];
 int filesBoard[BRD_SQ_NUM];
 int ranksBoard[BRD_SQ_NUM];
 
+U64 fileBBMask[8];
+U64 rankBBMask[8];
+
+U64 blackPassedMask[64];
+U64 whitePassedMask[64];
+U64 isolatedMask[64];
+
+void initEvalMasks() {
+    int sq, tsq, r, f;
+
+    for(sq = 0; sq < 8; ++sq) {
+        fileBBMask[sq] = 0ULL;
+        rankBBMask[sq] = 0ULL;
+    }
+
+    for(r = RANK_8; r >= RANK_1; r--) {
+        for(f = FILE_A; f <= FILE_H; f++) {
+            sq = r * 8 + f;
+            fileBBMask[f] |= (1ULL << sq);
+            rankBBMask[r] |= (1ULL << sq);
+        }
+    }
+
+    for(sq = 0; sq < 64; sq++) {
+        isolatedMask[sq] = 0ULL;
+        whitePassedMask[sq] = 0ULL;
+        blackPassedMask[sq] = 0ULL;
+    }
+
+    for(sq = 0; sq < 64; ++sq) {
+        tsq = sq + 8;
+
+        while(tsq < 64) {
+            whitePassedMask[sq] |= (1ULL << tsq);
+            tsq += 8;
+        }
+
+        tsq = sq - 8;
+        while(tsq >= 0) {
+            blackPassedMask[sq] |= (1ULL << tsq);
+            tsq -= 8;
+        }
+
+        if(filesBoard[SQ120(sq)] > FILE_A) {
+            isolatedMask[sq] |= fileBBMask[filesBoard[SQ120(sq)] - 1];
+
+            tsq = sq + 7;
+            while(tsq < 64) {
+                whitePassedMask[sq] |= (1ULL << tsq);
+                tsq += 8;
+            }
+
+            tsq = sq - 9;
+            while(tsq >= 0) {
+                blackPassedMask[sq] |= (1ULL << tsq);
+                tsq -= 8;
+            }
+        }
+
+        if(filesBoard[SQ120(sq)] < FILE_H) {
+            isolatedMask[sq] |= fileBBMask[filesBoard[SQ120(sq)] + 1];
+
+            tsq = sq + 9;
+            while(tsq < 64) {
+                whitePassedMask[sq] |= (1ULL << tsq);
+                tsq += 8;
+            }
+
+            tsq = sq - 7;
+            while(tsq >= 0) {
+                blackPassedMask[sq] |= (1ULL << tsq);
+                tsq -= 8;
+            }
+        }
+    }
+
+}
+
 void initFilesRanksBoard() {
     int index = 0;
     int file = FILE_A;
     int rank = RANK_1;
     int sq = A1;
-    int sq64 = 0;
 
     for(index = 0; index < BRD_SQ_NUM; ++index) {
         filesBoard[index] = OFFBOARD;
@@ -102,5 +180,7 @@ void allInit() {
     initSq120To64();
     initBitMask();
     initHashKeys();
-
+    initFilesRanksBoard();
+    initEvalMasks();
+    initMvvLva();
 };

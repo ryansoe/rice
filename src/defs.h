@@ -1,7 +1,9 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-#include <stdio.h>
+#include "stdlib.h"
+#include "stdio.h"
+#include <cstring>
 
 #define DEBUG
 
@@ -20,17 +22,24 @@ exit(1);}
 
 typedef unsigned long long U64;
 
+#define NAME "Rice 0.1"
 #define BRD_SQ_NUM 120
 
 #define MAXGAMEMOVES 2048
+#define MAXPOSITIONMOVES 256
+#define MAXDEPTH 64
 
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+#define INFINITE 30000
+#define MATE 29000
 
 enum epiece { EMPTY, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK };
 enum efile { FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NONE };
 enum erank { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NONE };
 
 enum ecolor { WHITE, BLACK, BOTH };
+enum emode { UCIMODE, XBOARDMODE, CONSOLEMODE };
 
 //  Four bits to represent castling permissions (e.g. 1 0 0 1 means WKCA and BQCA)
 enum ecastle { WKCA = 1, WQCA = 2, BKCA = 4, BQCA = 8 };
@@ -48,6 +57,25 @@ enum esquare {
 
 enum ebool { FALSE, TRUE };
 
+typedef struct {
+    int move;
+    int score;
+} S_MOVE;
+
+typedef struct {
+    S_MOVE moves[MAXPOSITIONMOVES];
+    int count;
+} S_MOVELIST;
+
+typedef struct {
+    U64 posKey;
+    int move;
+} S_PVENTRY;
+
+typedef struct {
+    S_PVENTRY *pTable = NULL;
+    int numEntries;
+} S_PVTABLE;
 typedef struct {
 
     int move;
@@ -85,7 +113,60 @@ typedef struct {
 
     // piece list
     int pieceList[13][10];
+
+    S_PVTABLE pvTable[1];
+    int pvArray[MAXDEPTH];
+
+    int searchHistory[13][BRD_SQ_NUM];
+    int searchKillers[2][MAXDEPTH];
 } S_BOARD;
+
+typedef struct {
+    int starttime;
+    int stoptime;
+    int depth;
+    int depthset;
+    int timeset;
+    int movestogo;
+    int infinite;
+
+    long nodes;
+
+    int quit;
+    int stopped;
+
+    float failHigh;
+    float failHighFirst;
+
+    int GAME_MODE;
+	int POST_THINKING;
+} S_SEARCHINFO;
+
+/* GAME MOVE */
+
+/*
+0000 0000 0000 0000 0000 0111 1111 -> From 0x7F
+0000 0000 0000 0011 1111 1000 0000 -> To >> 7, 0x7F
+0000 0000 0011 1100 0000 0000 0000 -> Captured >> 14, 0xF
+0000 0000 0100 0000 0000 0000 0000 -> EnPas 0x40000
+0000 0000 1000 0000 0000 0000 0000 -> Pawn Start 0x80000
+0000 1111 0000 0000 0000 0000 0000 -> Promoted Piece >> 20, 0xF
+0001 0000 0000 0000 0000 0000 0000 -> Castle 0x1000000
+*/
+
+#define FROMSQ(m) ((m) & 0x7F)
+#define TOSQ(m) (((m)>>7) & 0x7F)
+#define CAPTURED(m) (((m)>>14) & 0xF)
+#define PROMOTED(m) (((m)>>20) & 0xF)
+
+#define MFLAGEP 0x40000
+#define MFLAGPS 0x80000
+#define MFLAGCA 0x1000000
+
+#define MFLAGCAP 0x7C000
+#define MFLAGPROM 0xF00000
+
+#define NOMOVE 0
 
 /* MACROS */
 
@@ -101,6 +182,8 @@ typedef struct {
 #define IsRQ(p) (pieceRookQueen[(p)])
 #define IsKn(p) (pieceKnight[(p)])
 #define IsKi(p) (pieceKing[(p)])
+
+#define MIRROR64(sq) (mirror64[(sq)])
 
 /* GLOBALS */
 
@@ -129,6 +212,17 @@ extern int pieceKnight[13];
 extern int pieceKing[13];
 extern int pieceRookQueen[13];
 extern int pieceBishopQueen[13];
+extern int pieceSlides[13];
+extern int piecePawn[13];
+
+extern int mirror64[64];
+
+extern U64 fileBBMask[8];
+extern U64 rankBBMask[8];
+
+extern U64 blackPassedMask[64];
+extern U64 whitePassedMask[64];
+extern U64 isolatedMask[64];
 
 /* FUNCTIONS */
 
@@ -149,31 +243,59 @@ extern int parseFen(char *fen, S_BOARD *pos);
 extern void printBoard(const S_BOARD *pos);
 extern void updateListsMaterial(S_BOARD *pos);
 extern int checkBoard(const S_BOARD *pos);
+extern void mirrorBoard(S_BOARD *pos);
 
 // attack.cpp
 extern int sqAttacked(const int sq, const int side, const S_BOARD *pos);
 
-/* FUNCTIONS */
+// io.cpp
+extern char *printSq(const int sq);
+extern char *printMove(const int move);
+extern void printMoveList(const S_MOVELIST *list);
+extern int parseMove(char *ptrChar, S_BOARD *pos);
 
-// // init.c
-// void allInit();
+// validate.cpp
+extern int sqOnBoard(const int sq);
+extern int sideValid(const int side);
+extern int fileRankValid(const int fr);
+extern int pieceValidEmpty(const int piece);
+extern int pieceValid(const int piece);
 
-// // bitboards.c
-// void printBitBoard(U64 bb);
-// int popBit(U64 *bb);
-// int countBits(U64 b);
+// movegen.cpp
+extern void generateAllMoves( const S_BOARD *pos, S_MOVELIST *list );
+extern void generateAllCaps( const S_BOARD *pos, S_MOVELIST *list );
+extern int moveExists(S_BOARD *pos, const int move);
+extern int initMvvLva();
 
-// // hashkeys.c
-// U64 generatePosKey(const S_BOARD *pos);
+// makemove.cpp
+extern int makeMove(S_BOARD *pos, int move);
+extern void takeMove(S_BOARD *pos);
 
-// // board.cpp
-// void resetBoard(S_BOARD *pos);
-// int parseFen(char *fen, S_BOARD *pos);
-// void printBoard(const S_BOARD *pos);
-// void updateListsMaterial(S_BOARD *pos);
-// int checkBoard(const S_BOARD *pos);
+// perft.cpp
+extern void perftTest(int depth, S_BOARD *pos);
 
-// // attack.cpp
-// int sqAttacked(const int sq, const int side, const S_BOARD *pos);
+// search.cpp
+void searchPosition(S_BOARD *pos, S_SEARCHINFO *info);
+
+// misc.cpp
+extern int getTimeMs();
+extern void readInput(S_SEARCHINFO *info);
+
+// pvtable.cpp
+extern void initPvTable(S_PVTABLE *table);
+extern void storePvMove(const S_BOARD *pos, const int move);
+extern int probePvTable(const S_BOARD *pos);
+extern int getPvLine(const int depth, S_BOARD *pos);
+extern void clearPvTable(S_PVTABLE *table);
+
+// evaluate.cpp
+extern int evalPosition(const S_BOARD *pos);
+
+// uci.cpp
+extern void uci_loop(S_BOARD *pos, S_SEARCHINFO *info);
+
+// xboard.cpp
+extern void xboard_loop(S_BOARD *pos, S_SEARCHINFO *info);
+extern void console_loop(S_BOARD *pos, S_SEARCHINFO *info);
 
 #endif

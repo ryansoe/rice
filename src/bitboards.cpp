@@ -1,7 +1,6 @@
-#include<iostream>
-#include "stdio.h"
+// bitboards.cpp
+
 #include "defs.h"
-#include <stdio.h>
 #include "stdlib.h"
 using namespace std;
 
@@ -12,7 +11,7 @@ const int BitTable[64] = {
   58, 20, 37, 17, 36, 8
 };
 
-//
+// pops the first significant bit in a pawn bit board
 int popBit(U64 *bb) {
     U64 b = *bb ^ (*bb - 1);
     unsigned int fold = (unsigned) ((b & 0xffffffff) ^ (b >> 32));

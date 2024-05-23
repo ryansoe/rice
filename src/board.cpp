@@ -1,8 +1,8 @@
 // board.cpp
 
 #include "defs.h"
-#include <stdio.h>
 #include "stdlib.h"
+
 
 int checkBoard(const S_BOARD *pos) {
     int tempPieceNum[13] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -22,6 +22,10 @@ int checkBoard(const S_BOARD *pos) {
     for(tempPiece = wP; tempPiece <= bK; ++tempPiece) {
         for(tempPieceNumber = 0; tempPieceNumber < pos->pieceNum[tempPiece]; ++tempPieceNumber) {
             sq120 = pos->pieceList[tempPiece][tempPieceNumber];
+            if (pos->pieces[sq120]!=tempPiece) {
+                printBoard(pos);
+                
+            }
             ASSERT(pos->pieces[sq120]==tempPiece)
         }
     }
@@ -32,8 +36,8 @@ int checkBoard(const S_BOARD *pos) {
         tempPieceNum[tempPiece]++;
         color = PieceCol[tempPiece];
         if( PieceBig[tempPiece] == TRUE) tempBigPiece[color]++;
-        if( PieceMin[tempPiece] == TRUE) tempMajPiece[color]++;
-        if( PieceMaj[tempPiece] == TRUE) tempMinPiece[color]++;
+        if( PieceMin[tempPiece] == TRUE) tempMinPiece[color]++;
+        if( PieceMaj[tempPiece] == TRUE) tempMajPiece[color]++;
 
         tempMaterial[color] += PieceVal[tempPiece];
     }
@@ -65,7 +69,7 @@ int checkBoard(const S_BOARD *pos) {
         sq64 = POP(&tempPawns[BOTH]);
         ASSERT( (pos->pieces[SQ120(sq64)] == bP) || (pos->pieces[SQ120(sq64)] == wP));
     }
-
+    
     ASSERT(tempMaterial[WHITE]==pos->material[WHITE] && tempMaterial[BLACK]==pos->material[BLACK]);
     ASSERT(tempMinPiece[WHITE]==pos->minorPiece[WHITE] && tempMinPiece[BLACK]==pos->minorPiece[BLACK]);
     ASSERT(tempMajPiece[WHITE]==pos->majorPiece[WHITE] && tempMajPiece[BLACK]==pos->majorPiece[BLACK]);
@@ -231,10 +235,14 @@ void resetBoard(S_BOARD *pos) {
         pos->pieces[SQ120(index)] = EMPTY;
     }
 
-    for(index = 0; index < 3; ++index) {
+    for(index = 0; index < 2; ++index) {
         pos->bigPiece[index] = 0;
         pos->majorPiece[index] = 0;
         pos->minorPiece[index] = 0;
+        pos->material[index] = 0;
+    }
+
+    for(index = 0; index < 3; ++index) {
         pos->pawns[index] = 0ULL;
     }
 
@@ -285,4 +293,46 @@ void printBoard(const S_BOARD *pos) {
 			pos->castlePerm & BQCA ? 'q' : '-'
 			);
 	printf("PosKey:%llX\n",pos->posKey);
+}
+
+void mirrorBoard(S_BOARD *pos) {
+    int tempPiecesArray[64];
+    int tempSide = pos->side^1;
+    int swapPiece[13] = { EMPTY, bP, bN, bB, bR, bQ, bK, wP, wN, wB, wR, wQ, wK };
+    int tempCastlePerm = 0;
+    int tempEnPas = NO_SQ;
+
+    int sq;
+    int tp;
+    
+    if (pos->castlePerm & WKCA) tempCastlePerm |= BKCA;
+    if (pos->castlePerm & WQCA) tempCastlePerm |= BQCA;
+
+    if (pos->castlePerm & BKCA) tempCastlePerm |= WKCA;
+    if (pos->castlePerm & BQCA) tempCastlePerm |= WQCA;
+
+    if (pos->enPas != NO_SQ) {
+        tempEnPas = SQ120(mirror64[SQ64(pos->enPas)]);
+    }
+
+    for (sq = 0; sq < 64; sq++) {
+        tempPiecesArray[sq] = pos->pieces[SQ120(mirror64[sq])];
+    }
+
+    resetBoard(pos);
+
+    for (sq = 0; sq < 64; sq++) {
+        tp = swapPiece[tempPiecesArray[sq]];
+        pos->pieces[SQ120(sq)] = tp;
+    }
+
+    pos->side = tempSide;
+    pos->castlePerm = tempCastlePerm;
+    pos->enPas = tempEnPas;
+
+    pos->posKey = generatePosKey(pos);
+
+    updateListsMaterial(pos);
+
+    ASSERT(checkBoard(pos));
 }

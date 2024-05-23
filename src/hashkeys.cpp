@@ -1,8 +1,11 @@
+// hashkeys.cpp
+
 #include "defs.h"
-#include <stdio.h>
 #include "stdlib.h"
 using namespace std;
 
+// creates a unique key for a position by XORing a U64 bit integer
+// key holds the positions, side to move, en passant, castling perms
 U64 generatePosKey(const S_BOARD *pos) {
     int sq = 0;
     U64 finalKey = 0;

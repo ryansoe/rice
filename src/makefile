@@ -1,2 +1,2 @@
 all:
-	g++ rice.cpp defs.cpp init.cpp board.cpp bitboards.cpp hashkeys.cpp data.cpp attack.cpp -o rice
+	g++ rice.cpp defs.cpp init.cpp board.cpp bitboards.cpp hashkeys.cpp data.cpp attack.cpp io.cpp movegen.cpp validate.cpp makemove.cpp perft.cpp search.cpp misc.cpp pvtable.cpp evaluate.cpp uci.cpp xboard.cpp -o rice 
