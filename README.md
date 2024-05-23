@@ -1,5 +1,23 @@
-rice (Ryan's Insane Chess Engine)
+# RICE (Ryan's Insane Chess Engine)
 
-Made by following this tutorial by Bluefever Software: https://youtu.be/bGAfaepBco4?si=F_sT35AhzkEF6ZmK
+Inspired by this tutorial by Bluefever Software: https://youtu.be/bGAfaepBco4?si=F_sT35AhzkEF6ZmK
 
-Completion: 20% finished
+Completion: 50% finished
+
+## Features
+- 10x12 Board
+- Search
+	- Alpha-Beta with PVS
+	- Transposition Table
+	- Quiescence Search with Delta Pruning
+- Evaluation
+	- Material
+	- Weak and Passed Pawns
+- UCI and WinBoard support
+
+## To do
+- Comments
+- Null move pruning
+- Working transposition table
+- King safety evaluation
+- Opening book
