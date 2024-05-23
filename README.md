@@ -2,7 +2,7 @@
 
 Inspired by this tutorial by Bluefever Software: https://youtu.be/bGAfaepBco4?si=F_sT35AhzkEF6ZmK
 
-Completion: 50% finished
+Completion: 60% finished
 
 ## Features
 - 10x12 Board
